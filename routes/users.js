@@ -5,7 +5,6 @@ var {userLogin, userRegister} = require('../controller/user')
 var {checkUser} = require('../util/middleware')
 router.post('/login',userLogin)
 router.post('/register',userRegister)
-console.log(checkUser)
-router.use('/user',require('./userNeedCheck'))
+router.use('/user',checkUser,require('./userNeedCheck'))
 
 module.exports = router;

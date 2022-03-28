@@ -15,7 +15,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-console.log(checkApp)
+
+//设置允许跨域访问该服务
+//设置跨域访问
+app.all('*',function(req,res,next){
+    res.header("Access-Control-Allow-Origin","*")
+    res.header("Access-Control-Allow-Headers","*")
+    next()
+})
 app.use('/', checkApp,indexRouter);
 app.use('/users', usersRouter);
 app.use('/admin',[checkApp,checkUser,checkAdmin],adminRouter)

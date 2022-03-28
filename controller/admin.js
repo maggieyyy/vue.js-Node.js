@@ -4,6 +4,20 @@ const { getReturnData } = require("../util/common")
 const crypto = require('crypto')
 const { resourceLimits } = require("worker_threads")
 
+//上传图片用
+var express = require('express');
+var router = express.Router();
+var path = require("path");
+
+var fs = require('fs');
+var os = require('os');
+
+var multer  = require('multer');
+// 临时上传目录
+var upload = multer({ dest: 'tmp_uploads/' });
+
+var upload_config = require('config').get("upload_config");
+
 //添加文章
 exports.setArticle = (req,res,next)=>{
     //获取传递的值
@@ -20,7 +34,7 @@ exports.setArticle = (req,res,next)=>{
     }else{
         //新文章需要初始化点赞数0、观看数0和时间戳
         data.time = Date.now()
-        key = req.headers,fapp + ":article:"
+        key = req.headers.fapp + ":article:"
         redis.incr(key).then((id)=>{
             //方便取用
             data.a_id = id
@@ -107,7 +121,8 @@ exports.getAllUser = (req,res,next)=>{
     let re = req.headers.fapp + ':user:info:*'
     redis.scan(re).then(async(data)=>{
         //这里通过循环获取用户的详细资料
-        let result = data[1].map((item)=>{
+        console.log(data)
+        let result = data.keys.map((item)=>{
             //获取每个用户的username
             return redis.get(item).then((user)=>{
                 return {'username':user.username,'login':user.login,'ip':user.ip}
@@ -121,7 +136,7 @@ exports.getAllUser = (req,res,next)=>{
 //封停用户
 exports.stopLogin = (req,res,next)=>{
     //获取传递的值
-    let key = req.headers.fapp + ':user:info:' + req.params.id
+    let key = req.headers.fapp + ':user:info:' + req.params.username
     redis.get(key).then((user) =>{
         if (user.login ==0){
             user.login = 1
@@ -137,8 +152,7 @@ exports.stopLogin = (req,res,next)=>{
 exports.setIndexPic = (req,res,next) =>{
     let key = req.headers.fapp + ":indexPic"
     //获取传递的值
-    let data = req.body.setIndexPic
-    console.log(data)
+    let data = req.body
     //存储
     redis.set(key,data)
     res.json(util.getReturnData(0,'修改成功'))
@@ -146,7 +160,7 @@ exports.setIndexPic = (req,res,next) =>{
 
 //修改导航菜单
 exports.setNavMenu = (req,res,next) =>{
-    let key = req.headers.fapp + ":nav_menu"
+    let key = req.headers.fapp + ":nav:menu"
     //获取传递的值
     let data = req.body.nav_menu
     console.log(data)
@@ -159,6 +173,7 @@ exports.setNavMenu = (req,res,next) =>{
 exports.setFooter = (req,res,next) =>{
     let key = req.headers.fapp + ":footer"
     //获取传递的值
+    console.log('gfooter'+req)
     let data = req.body.footer
     console.log(data)
     //存储

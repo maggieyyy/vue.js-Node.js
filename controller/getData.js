@@ -4,10 +4,10 @@ const { getReturnData } = require("../util/common")
 const crypto = require('crypto')
 //菜单
 exports.getNavMenu = (req,res,next) =>{
-    let key = req.headers.fapp +":nav_menu"
+    // let key = req.headers.fapp +":nav:menu"
+    let key ="book:nav:menu"
     //获取数据
     redis.get(key).then((data)=>{
-        console.log(data)
         res.json(util.getReturnData(0,'',data))
     })
 }
@@ -17,7 +17,6 @@ exports.getFooter = (req,res,next) =>{
     let key = req.headers.fapp +":footer"
     //获取数据
     redis.get(key).then((data)=>{
-        console.log(data)
         res.json(util.getReturnData(0,'',data))
     })
 }
@@ -27,7 +26,6 @@ exports.getLinks = (req,res,next) =>{
     let key = req.headers.fapp +":links"
     //获取数据
     redis.get(key).then((data)=>{
-        console.log(data)
         res.json(util.getReturnData(0,'',data))
     })
 }
@@ -46,12 +44,12 @@ exports.getIndexPic = (req,res,next) =>{
 exports.getHotArticle = (req,res,next) =>{
     let key = req.headers.fapp +":a_view"
     //获取集合，只取0、1、2、3、4五条数据
-    redis.zrevrange(key,0,4).then(async (data)=>{
-        console.log(data)
+    redis.zrevrange(key,0,-1).then(async (data)=>{
+        console.log('getzre'+data)
         let result = data.map((item) =>{
             //获取每篇文章的题目、ID及日期
             return redis.get(item.member).then((data1)=>{
-                console.log(data1)
+                console.log('hot@'+data1)
                 if(data1 && data1.show !=0){
                     return{
                         'title':data1.title,
@@ -73,19 +71,21 @@ exports.getHotArticle = (req,res,next) =>{
 exports.getNewArticle = (req,res,next) =>{
     let key = req.headers.fapp +":a_time"
     let isAdmin = false
-    console.log(key)
+    console.log('getna'+key)
     if('token' in req.headers){
+        console.log('getna@t')
         let pKey = req.headers.fapp + ":user:power:" + req.headers.token
         redis.get(pKey).then((power)=>{
-            if(power == 'admin'){
+            console.log('power'+power)
+           if(power == 'admin'){
                  //获取集合，只取0、1、2、3、4五条数据
-                redis.zrevrange(key,0,-1).then(async (data)=>{
-                    console.log(data)
+                redis.zrevrange(key,0,20).then(async (data)=>{
+                    console.log('getna'+data)
                     let result = data.map((item) =>{
                         //获取每篇文章的题目、ID及日期
                         return redis.get(item.member).then((data1)=>{
-                            console.log(data1)
-                            if(data1 && data1.show !=0){
+                            console.dir(data1)
+                            if(data1){
                                 return{
                                     'title':data1.title,
                                     'data':util.getLocalDate(data1.time),
@@ -96,14 +96,35 @@ exports.getNewArticle = (req,res,next) =>{
                         })
                     })
                     let t_data = await Promise.all(result)
-                    console.log(t_data)
+                    console.log('getna'+t_data)
                     res.json(util.getReturnData(0,'',t_data))
                 })
-            }else{
-                res.json(util.getReturnData(1,'其他权限'))
-            }
+             }else{
+                    //获取集合，只取0、1、2、3、4五条数据
+                    redis.zrevrange(key,0,-1).then(async (data)=>{
+                        console.log('getna'+data)
+                        let result = data.map((item) =>{
+                            //获取每篇文章的题目、ID及日期
+                            return redis.get(item.member).then((data1)=>{
+                                console.dir(data1)
+                                if(data1 && data1.show !=0){
+                                    return{
+                                        'title':data1.title,
+                                        'data':util.getLocalDate(data1.time),
+                                        'id':data1.a_id,
+                                        'show':data1.show
+                                    }
+                                }
+                            })
+                        })
+                        let t_data = await Promise.all(result)
+                        console.log('getna'+t_data)
+                        res.json(util.getReturnData(0,'',t_data))
+                    })
+                }
         })
     }else{
+        console.log('!getna@t')
         //获取集合，只取0、1、2、3、4五条数据
         redis.zrevrange(key,0,-1).then(async (data)=>{
             console.log(data)
@@ -146,10 +167,10 @@ exports.getArticle = (req,res,next) =>{
                     //获取文章的阅读量
                     redis.zscore(req.headers.fapp+":a_view",key).then((view)=>{
                         console.log(view)
-                        data.view = view
+                        data.view = view?view:0
                         //获取文章的点赞量
                         redis.zscore(req.headers.fapp+":a_like",key).then((like)=>{
-                            data.like = like
+                            data.like = like?like:0
                             res.json(util.getReturnData(0,'success',data))
                         })
                     })
@@ -176,6 +197,7 @@ exports.getArticleTalk = (req,res,next) =>{
 //根据小标签或者分类获取所有的文章
 exports.getArticles = (req,res,next)=>{
     let key = req.headers.fapp
+    console.log(req.body)
     if('tag' in req.body){
         let tKeyMd5 = crypto.createHash('md5').update(req.body.tag).digest("hex")
         key = key + ':tag:' + tKeyMd5

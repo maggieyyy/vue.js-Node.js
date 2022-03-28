@@ -27,13 +27,13 @@ router.get('/getHotArticle',getHotArticle)
 router.get('/getNewArticle',getNewArticle)
 
 //获取文章的详情
-router.get('/getArticle',getArticle)
+router.get('/getArticle/:id',getArticle)
 
 //获取文章评论
 router.get('/getArticleTalk/:id',getArticleTalk)
 
 //获取小标签或者文章分类的内容
-router.get('/getArticles',getArticles)
+router.post('/getArticles',getArticles)
 
 //文章被查看数自动+1
 router.get('/viewArticle/:id',viewArticle)

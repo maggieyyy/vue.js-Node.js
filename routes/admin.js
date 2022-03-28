@@ -12,13 +12,14 @@ router.post('/setArticleType',setArticleType)
 //获取所有的用户
 router.get('/getAllUser',getAllUser)
 //用户封停操作
-router.get('/stopLogin',stopLogin)
+router.post('/stopLogin/:username',stopLogin)
 //修改首页轮播图片
-router.post('/setIndexPic',setIndexPic)
+router.post('/setIndexPic/:username',setIndexPic)
 //修改导航菜单
 router.post('/changeNav',setNavMenu)
 //修改底部内容
 router.post('/setFooter',setFooter)
 //修改友情链接
 router.post('/setLinks',setLinks)
+
 module.exports= router

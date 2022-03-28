@@ -40,8 +40,11 @@ exports.userLogin = (req,res,next)=>{
     let password = req.body.password
     let key = req.headers.fapp + ":user:info:" + username
     redis.get(key).then((data)=>{
+        console.log('data@@'+data)
         if(data){
             if(data.login == 0){
+                console.log('data:'+data)
+                console.log(password)
                 if(data.password != password){
                     res.json(util.getReturnData(1,'用户名或者密码错误'))
                 }else{
@@ -53,7 +56,13 @@ exports.userLogin = (req,res,next)=>{
                     //写入数据库并设置过期时间
                     redis.set(tokenKey,data)
                     //设置1000s过期
-                    redis.expire(tokenKey,1000)
+                    redis.expire(tokenKey,10000)
+                    //判断权限
+                    console.log('username'+username)
+                    if(username == 'admin'){
+                    let pky = req.headers.fapp + ":user:power:" + token
+                    console.log('pky:'+pky)
+                    redis.set(pky,'admin')}
                     res.json(util.getReturnData(0,'登陆成功',{token:token}))
                 }
             }

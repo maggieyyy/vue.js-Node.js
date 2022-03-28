@@ -10,16 +10,16 @@ const { redisConfig } = require('../config/db')
 
 //文章评论
 exports.articleTalk = (req,res,next)=>{
+    console.log(req.body)
     if('a_id' in req.body && 'talk' in req.body){
-        let talk = {talk : req.body.talk, time:Date.now(),username:req.username}
+        let talk = {talk : req.body.talk, time:Date.now(),username:req.headers.username}
         let key = req.headers.fapp + ':article:' + req.body.a_id + ':talk'
         redis.get(key).then((data)=>{
             let tData = []
             if(data){
                 tData = data
-            }else{
-                tData.push(talk)
             }
+            tData.push(talk)
             redis.set(key,tData)
             res.json(util.getReturnData(0,'评论成功'))
         })
@@ -30,9 +30,11 @@ exports.articleTalk = (req,res,next)=>{
 
 //获取用户资料，不包含密码
 exports.getUserInfo = (req,res,next)=>{
+    console.log('获取用户资料')
     redis.get(req.headers.fapp+":user:info:"+req.params.username).then((data)=>{
+        console.log(req.params.username,req.headers.username)
         if(data){
-            if(req.params.username == req.username){
+            if(req.params.username == req.headers.username){
                 //自己的资料
                 delete data.password
             }else{
@@ -49,11 +51,11 @@ exports.getUserInfo = (req,res,next)=>{
 
 //修改用户资料
 exports.changeUserInfo=(req,res,next)=>{
-    let key = req.headers.fapp +":user:info:" + req.username
+    let key = req.headers.fapp +":user:info:" + req.headers.username
     redis.get(key).then((data)=>{
         if(data){
             let userData = {
-                username:req.username,
+                username:req.headers.username,
                 phone:'phone' in req.body?req.body.phone:data.phone,
                 nikename:'nikename' in req.body?req.body.nikename:data.nikename,
                 age:'age' in req.body?req.body.age:data.age,
@@ -77,15 +79,17 @@ exports.sendMail=(req,res,next)=>{
         console.log(checkKey)
         console.log(user)
         if(user && req.body.text){
-            let userKey1 = req.headers.fapp+':user:' +req.username+':mail'
+            console.log(req.params.username,req.headers.username)
+            let userKey1 = req.headers.fapp+':user:' +req.headers.username+':mail'
             let userKey2 = req.headers.fapp+':user:' + req.params.username+':mail'
             let mailKey = req.headers.fapp + ':mail:'
             //保证两个用户之前只可能出现一次对话
             redis.get(userKey1).then((mail)=>{
                 if(!mail) mail=[]
+                console.log(mail)
                 let has = false
                 for(let i =0; i<mail.length;i++){
-                    if(mail[i].user.indexOf(req.params.username)>-1){
+                    if(mail[i].users.indexOf(req.params.username)>-1){
                         has = true
                         //对话已经存在，直接写
                         mailKey = mailKey + mail[i].m_id
@@ -113,14 +117,14 @@ exports.sendMail=(req,res,next)=>{
                         console.log({users:[req.params.username]})
                         mail.push({
                             m_id:m_id,
-                            users:[req.username,req.params.username]})
+                            users:[req.headers.username,req.params.username]})
                         redis.set(userKey1,mail)
                         //写第二个用户
                         redis.get(userKey2).then((mail2)=>{
                             if(!mail2) mail2=[]
                             mail2.push({
                                 m_id :m_id,
-                                users:[req.username,req.params.username]
+                                users:[req.headers.username,req.params.username]
                             })
                             redis.set(userKey2,mail2)
                             res.json(util.getReturnData(0,'发送新私信成功'))
@@ -136,7 +140,8 @@ exports.sendMail=(req,res,next)=>{
 
 //获取私信列表
 exports.getMails=(req,res,next)=>{
-    let userKey1 = req.headers.fapp+':user:' +req.username+':mail'
+    console.log('getmails'+req.headers.username)
+    let userKey1 = req.headers.fapp+':user:' +req.headers.username+':mail'
     redis.get(userKey1).then((mail)=>{
         res.json(util.getReturnData(0,'',mail))
     })
@@ -144,25 +149,25 @@ exports.getMails=(req,res,next)=>{
 
 //获取私信
 exports.getUserMail=(req,res,next)=>{
-    let userKey1 = req.headers.fapp+':user:' +req.username+':mail'
+    let userKey1 = req.headers.fapp+':user:' +req.headers.username+':mail'
     let rData = {}
     redis.get(userKey1).then((mail)=>{
-        if(!mail) res.json(util.getReturnData(0,'',[]))
+        if(!mail) return res.json(util.getReturnData(0,'',[]))
         let has = false
         //获取内容
         for(let i = 0; i<mail.length;i++){
             if(mail[i].m_id == req.params.id){
                 has = true
                 //删除自己的数据
-                mail[i].users.splice(mail[i].users.indexOf(req.username),1)
+                mail[i].users.splice(mail[i].users.indexOf(req.headers.username),1)
                 rData.toUser = mail[i].users[0]
                 let key = req.headers.fapp+':mail:'+req.params.id
                 redis.get(key).then((data)=>{
                     //将自己的username写入read属性，代表已读
                     console.log(data)
 
-                    if(data[data.length-1].read.indexOf(req,username)<0){
-                        data[data.length-1].read.push(req.username)
+                    if(data[data.length-1].read.indexOf(req.headers.username)<0){
+                        data[data.length-1].read.push(req.headers.username)
                     }
                     //构造返回内容
                     rData.mail = data
@@ -202,9 +207,9 @@ exports.articleLike = (req,res,next) =>{
 
 //文章收藏
 exports.articleCollection = (req,res,next)=>{
-    let key = req.headers.fapp + ":user:" + req.username + ":collection"
+    let key = req.headers.fapp + ":user:" + req.headers.username + ":collection"
     let a_key = req.headers.fapp + ":article:" + req.params.id
-    redis.get(a_key).than((data)=>{
+    redis.get(a_key).then((data)=>{
         if(data){
             redis.get(key).then((tData)=>{
                 if(!tData) tData=[]
@@ -224,7 +229,7 @@ exports.articleCollection = (req,res,next)=>{
 
 //获取收藏文章列表
 exports.getCollection=(req,res,next)=>{
-    let key = req.headers.fapp+':user:' +req.username+':collection'
+    let key = req.headers.fapp+':user:' +req.headers.username+':collection'
     redis.get(key).then((data)=>{
         res.json(util.getReturnData(0,'',data))
     })
